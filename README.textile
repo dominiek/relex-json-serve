@@ -21,27 +21,22 @@ To learn more about Relex & it's dependencies, please visit the "OpenCog website
 * Most (cross-platform) JAR files are in dependencies/*, including Relex.
 * Ruby and these gems:
 
-<code>
-  sudo gem install json
+pre. sudo gem install json
   sudo gem install sinatra
   sudo gem install rjb
-</code>
 
 h2. Starting the server
 
-<code>
-  $ ruby relex.rb 
+pre. $ ruby relex.rb 
   Java VM, loading: commons-logging.jar
   Java VM, loading: jwnl.jar
   Java VM, loading: linkgrammar-4.6.5.jar
   Java VM, loading: relex-1.2.1.jar
   == Sinatra/0.9.4 has taken the stage on 9090 for development with backup from Mongrel
-</code>
 
 h2. Example: Frame Semantics for a Sentence
 
-<code>
-  $ wget http://localhost:9090/frames?text=I am eating a pear
+pre. $ wget http://localhost:9090/frames?text=I am eating a pear
   {
       "Transitive_action": [{
           "Patient": ["eat", "pear"]
@@ -62,12 +57,11 @@ h2. Example: Frame Semantics for a Sentence
           "Ingestor": ["eat", "I"]
       }]
   }
-</code>
+
 
 h2. Example: Penn Tree Structure for a Sentence
 
-<code>
-  $ wget http://localhost:9090/phrase_tree?text=I am eating a pear
+pre. $ wget http://localhost:9090/phrase_tree?text=I am eating a pear
   {
       "string": "(S (NP I) (VP am (VP eating (NP a pear))) .)",
       "tree_array": [[{
@@ -106,8 +100,7 @@ h2. Example: Penn Tree Structure for a Sentence
           "phrase": "",
           "pos": "S"
       }]
-  } 
-</code>
+  }
 
 h2. TODO
 
