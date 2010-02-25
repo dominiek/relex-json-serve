@@ -21,7 +21,7 @@ To learn more about Relex & it's dependencies, please visit the "OpenCog website
 * Most (cross-platform) JAR files are in dependencies/*, including Relex.
 * Ruby and these gems:
 
-pre. sudo gem install json
+pre.   sudo gem install json
   sudo gem install sinatra
   sudo gem install rjb
 
