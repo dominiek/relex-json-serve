@@ -6,7 +6,7 @@ require 'json'
 require 'phrase_tree'
 
 # Initialize JVM
-ENV['JAVA_HOME'] = "/System/Library/Frameworks/JavaVM.framework/Home"
+raise "Need JAVA_HOME environment variable (without a trailing slash)." unless ENV['JAVA_HOME']
 classpaths = ['.']
 Dir::open(File.join(File.dirname(__FILE__), '/dependencies')).entries.each do |entry|
   if entry =~ /\.jar$/
