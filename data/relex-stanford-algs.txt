@@ -1,0 +1,658 @@
+;
+; relex-stanford-algs.txt
+;
+; Rules to generate Stanford-parser-style relationships.
+; The goal here is to be as compatible with the Stanford
+; parser as possible, given the parse provided by Link-Grammar.
+;
+; As of October 2009, these algs are "experimental" but stable: they
+; give absolutely compatible answers on four dozen test sentences. 
+; They fail on a handful of sentences, although, for some of these,
+; it appears that the Stanford parser is generating incorrect results,
+; and, for some others, the correct behaviour is unclear/under-documented.
+; However, a large-scale corpus accuracy test has not been attempted,
+; and there may still be a number of bugs.
+;
+;///////////////////////////////////////////////////////////////////////
+;
+; GENERATE BASIC SF RELATIONS
+; Stanford parser generates some relations which RelEx does not.
+; This includes det, aux and auxpass. These are quite simple. Generate
+; these here.
+; ------
+;
+; Explicit determiner markup
+; Possesives are handled explicitly, so don't allow them here.
+; Use += for multiple determiners: e.g. "this or any book"
+;
+#TemplateActionAlg
+SF_DET
+<LAB> = \D\.*|\DD\.*
+<LAB> != Dmcn
+<F_L orig_str> != my|our|their|your|'s
+=
+<F_R ref sf-links _det> += <F_L ref>
+;
+; possesive determiner, for example:
+; "I saw the man whose wife you love." poss(wife-6-NN, whose-5-WP$)
+#TemplateActionAlg
+SF_DET_POSS
+<LAB> = \D\.\.w
+<F_L orig_str> = whose
+=
+<F_R ref sf-links _poss> += <F_L ref>
+;
+; Explicit aux markup.
+; "there is a place we can go"  aux(go-7, can-6)
+; "The accident happened as the night was falling." aux(falling-8, was-7)
+; Must *not* allow PPf generate aux (since PPf--"has been")
+
+#TemplateActionAlg
+SF_AUX
+<LAB> = \I\.*|\Pg\.*b|\PP
+=
+<F_R ref sf-links _aux> = <F_L ref>
+
+;
+; "has been killed" - aux(killed, has)
+#TemplateActionAlg
+SF_AUX2
+<LAB> = \PPf
+<F_L head-word> != %
+=
+<F_L head-word ref sf-links _aux> = <F_L ref>
+
+;
+; "has been killed" - auxpass(killed, been)
+#TemplateActionAlg
+SF_AUXPASS
+<LAB> = \Pv
+=
+<F_R ref sf-links _auxpass> = <F_L ref>
+
+; 
+; Copulas
+; Effects caused by the protein are important. -> cop(important-7, are-6)
+; Bill is big. -> cop(big-3, is-2)
+#TemplateActionAlg
+SF_COP
+<LAB> = \Pa\.*
+<F_L str> = be
+=
+<F_R ref sf-links _cop> = <F_L ref>
+
+;
+; Negatives
+#TemplateActionAlg
+SF_NEG
+<NEGATIVE-FLAG> != %
+<nameSource negation> != %
+=
+<sf-links _neg> = <nameSource negation ref>
+;
+; relative clause relative
+#TemplateActionAlg
+SF_REL
+<LAB> = R
+<F_R head-word> != %
+=
+<F_R head-word ref sf-links _rel> = <F_R ref>
+
+; As above but ... xxx under construction
+; #TemplateActionAlg
+; SF_REL
+; <LAB> = \B.*
+; =
+; <F_R ref sf-links _rel> = <F_L ref>
+
+;
+; relative clause modifier
+; Two ways to look for this: Find R link, and use head-word, 
+; or find B link, and use that directly.
+;
+; However, it seems that the only time to correctly use rcmod is when 
+; the clause is modifying an NP that is the object, and never the subject.
+; XXX Is this correct!?
+;
+; This is confusing. Infinitival modifiers should be rejected here:
+; e.g. "I don't have anything to say" or "the points to establish are these"
+;
+; #TemplateActionAlg
+; SF_RCMOD
+; <LAB> = \R\.*
+; <F_R head-word> != %
+; =
+; <F_L ref sf-links _rcmod> = <F_R head-word ref>
+;
+#TemplateActionAlg
+SF_RCMOD_ID
+<LAB> = \O\.*
+=
+<F_R IS-OBJ-FLAG> = T
+
+
+#TemplateActionAlg
+SF_RCMOD
+<LAB> = \B\.*
+<F_L IS-OBJ-FLAG> = T
+=
+<F_L ref sf-links _rcmod> = <F_R ref>
+
+;
+; Particles
+#TemplateActionAlg
+SF_PRT
+<LAB> = K
+=
+<F_L ref sf-links _prt> = <F_R ref>
+
+;
+; Entity names
+#TemplateActionAlg
+SF_ENTITY_NAME
+<LAB> = G
+=
+<F_R ref sf-links _nn> = <F_L ref>
+
+; Treat "how much" as a plain-jane advmod
+#TemplateActionAlg
+SF_HOW_MUCH
+<LAB> = H
+=
+<F_R ref sf-links _advmod> = <F_L ref>
+
+;///////////////////////////////////////////////////////////////////////
+;
+; ALTERNATIVES TO PREP MARKUP
+; Relex generates prepositional relations, whereas Stanford tends
+; to discriminate more, frequently posting clauses and complements
+; distinctly.
+; Here, we untangle these.
+
+; The preposition modifies the preceeding phrase
+; "The accident happened as the night was falling."
+; mark(falling-8, as-4)
+; advcl(happened-3, falling-8)
+
+#TemplateActionAlg
+SF_ADVCL_OBJECT
+<LAB> = MVs|\WN\.*
+<F_R head-word> != %
+=
+<F_L ref sf-links _advcl> = <F_R head-word ref>
+<F_L DONT_SHOW_PREP> = T
+
+
+;
+; "The accident happened as the night was falling." - mark(falling-8, as-4)
+;
+#TemplateActionAlg
+SF_ADVCL_COMPLEMENT
+; <LAB> = MVs|\WN\.*
+<LAB> = MVs
+<F_R head-word> != %
+=
+<F_R head-word ref sf-links _mark> = <F_R ref>
+
+
+;
+;  If you know who did it, you should tell the teacher. - advcl(tell-10, know-3)
+;
+#TemplateActionAlg
+SF_ADVCL2_OBJECT
+<LAB> = \CO\.*
+<F_R head-word> != %
+<F_L head-word> != %
+=
+<F_R head-word ref sf-links _advcl> = <F_L head-word ref>
+<F_R head-word DONT_SHOW_PREP> = T
+
+; 
+; If you know who did it, you should tell the teacher. -  mark(know-3, if-1)
+;
+#TemplateActionAlg
+SF_ADVCL2_COMPLEMENT
+<LAB> = \Cs
+<F_L str> != when|who
+<F_R head-word> != %
+=
+<F_R head-word ref sf-links _mark> = <F_L ref>
+
+;
+; Same as above, but for relative clauses introduced by
+; who, when, etc.
+#TemplateActionAlg
+SF_ADVCL_RELATIVE
+<LAB> = \Cs
+<F_R head-word> != %
+<F_L str> = when|who
+=
+<F_R head-word ref sf-links _rel> = <F_L ref>
+
+;
+; Clausal complement
+; If you know who did it, you should tell the teacher. -  ccomp(know-3, did-5)
+; He says that you like to swim. - ccomp(says-2, like-5)
+;
+#TemplateActionAlg
+SF_CLAUSAL_COMPLEMENT
+<LAB> = \QI\.*|\TH\.*
+<F_R head-word> != %
+=
+<F_L ref sf-links _ccomp> = <F_R head-word ref>
+<F_L DONT_SHOW_PREP> = T
+
+;
+#TemplateActionAlg
+SF_CLAUSAL_COMPLEMENTIZER
+<LAB> = \TH\.*
+<F_R head-word> != %
+=
+<F_R head-word ref sf-links _complm> = <F_R ref>
+
+;///////////////////////////////////////////////////////////////////////
+;
+; ODDBALLS
+;
+; Here's an odd one: prep-by is turned into "agent"
+; e.g. "killed by police" - agent(killed, police)
+;
+#TemplateActionAlg
+SF_AGENT
+<prep-links by> != %
+=
+<sf-links _agent> = <prep-links by>
+<nameSource DONT_SHOW_PREP> = T
+
+;///////////////////////////////////////////////////////////////////////
+;
+; TRANSFER PREP LINKS TO SF-LINKS
+;
+; But don't transfer those that correspond to adverbial clauses, etc.
+; Don't transfer preps if the expand-preps flag is set.
+;
+#TemplateActionAlg
+PREP_TO_SF
+<ref prep-links> != %
+<DONT_SHOW_PREP> != T
+<wall expand-preps> = %
+=
+<ref sf-links> <= <ref prep-links>
+;
+#TemplateActionAlg
+SF_PREP_EXPAND_SUBJ
+<DONT_SHOW_PREP> != T
+<prep-parts _prepsubj> != %
+<wall expand-preps> = T
+=
+<ref sf-links _prep> = <prep-parts _prepsubj>
+
+#TemplateActionAlg
+SF_PREP_EXPAND_OBJ
+<DONT_SHOW_PREP> != T
+<prep-parts _prepobj> != %
+<wall expand-preps> = T
+=
+<ref sf-links _pobj> = <prep-parts _prepobj>
+;
+;
+;#TemplateActionAlg
+;PREP_KILL_CONTRACTION
+;<sf-links x> = <prep-links x>
+;= 
+;
+;
+;/////////////////////////////////////////////////////////////////////////////
+;/////////////////////////////// END OF FILE /////////////////////////////////
+;/////////////////////////////////////////////////////////////////////////////
+;///////////////////////////////////////////////////////////////////////
+;
+; TRANSFER LINKS TO SF-LINKS
+;
+; These are relations which are more or less in 1-1 correspondance
+; with Relex relations. Just copy them over, and give them altered
+; names, as appropriate.
+;
+; Stanford nsubj is just like relex subj
+#TemplateActionAlg
+SUBJ_TO_SF_LINKS
+<HEAD-FLAG> = T
+<subj> != %
+=
+<ref sf-links _nsubj> = <subj>
+;
+;
+#TemplateActionAlg
+EXPL_TO_SF_LINKS
+<HEAD-FLAG> = T
+<expl> != %
+=
+<ref sf-links _expl> = <expl>
+;
+#TemplateActionAlg
+OBJ_TO_SF_LINKS
+<HEAD-FLAG> = T
+<obj> != %
+=
+<ref sf-links _dobj> = <obj>
+;
+;
+; This seems to be wrong .... 
+; #TemplateActionAlg
+; OBJ_TO_SF_LINKS_GERUND
+; <POS> = noun
+; <obj> != %
+; =
+; <ref sf-links _ddobj> = <obj>
+;
+; Modifiers
+;
+#TemplateActionAlg
+ACOMP_TO_SF
+<ref links _to-be> != %
+=
+<ref sf-links _acomp> = <ref links _to-be>
+
+;
+#TemplateActionAlg
+ADVMOD_TO_SF
+<ref links _advmod> != %
+=
+<ref sf-links _advmod> = <ref links _advmod>
+
+#TemplateActionAlg
+AMOD_TO_SF
+<ref links _amod> != %
+=
+<ref sf-links _amod> = <ref links _amod>
+
+;
+#TemplateActionAlg
+APPO_TO_SF
+<ref links _appo> != %
+=
+<ref sf-links _appos> = <ref links _appo>
+
+;
+#TemplateActionAlg
+IOBJ_TO_SF
+<ref links _iobj> != %
+=
+<ref sf-links _iobj> = <ref links _iobj>
+
+
+;
+#TemplateActionAlg
+NN_TO_SF
+<ref links _nn> != %
+=
+<ref sf-links _nn> = <ref links _nn>
+
+;
+; Be sure to blank out _det if possesive is specified!
+#TemplateActionAlg
+POSS_TO_SF
+<ref links _poss> != %
+=
+<ref sf-links _poss> = <ref links _poss>
+<ref sf-links _det> = %
+
+;
+#TemplateActionAlg
+TODO_TO_SF
+<ref links _to-do> != %
+=
+<ref sf-links _xcomp> = <ref links _to-do>
+
+;
+; Be sure to blank out _det if number is specified!
+#TemplateActionAlg
+QUANTITY_TO_SF
+<ref links _quantity> != %
+=
+<ref sf-links _num> = <ref links _quantity>
+<ref sf-links _det> = %
+
+;
+#TemplateActionAlg
+QUANTITY_MULT_TO_SF
+<ref links _quantity_mult> != %
+=
+<ref sf-links _number> = <ref links _quantity_mult>
+
+;
+#TemplateActionAlg
+QUANTITY_MOD_TO_SF
+<ref links _quantity_mod> != %
+=
+<ref sf-links _quantmod> = <ref links _quantity_mod>
+
+;
+#TemplateActionAlg
+MEASURE_DISTANCE_TO_SF
+<ref links _measure_distance> != %
+=
+<ref sf-links _measure> = <ref links _measure_distance>
+
+;
+#TemplateActionAlg
+MEASURE_PER_TO_SF
+<ref links _measure_per> != %
+=
+<ref sf-links _measure> = <ref links _measure_per>
+
+;
+#TemplateActionAlg
+MEASURE_SIZE_TO_SF
+<ref links _measure_size> != %
+=
+<ref sf-links _measure> = <ref links _measure_size>
+
+;
+#TemplateActionAlg
+MEASURE_TIME_TO_SF
+<ref links _measure_time> != %
+=
+<ref sf-links _measure> = <ref links _measure_time>
+
+;
+#TemplateActionAlg
+PARATAXIS_TO_SF
+<ref links _parataxis> != %
+=
+<ref sf-links _parataxis> = <ref links _parataxis>
+
+;
+#TemplateActionAlg
+PREDET_TO_SF
+<ref links _predet> != %
+=
+<ref sf-links _predet> = <ref links _predet>
+
+
+;///////////////////////////////////////////////////////////////////////
+; Infinitival modifier.
+;
+; When an infinitival modifier is modifying a verb, its an "xcomp"
+; When an infinitival modifier is modifying a noun, its an "infmod"
+
+#TemplateActionAlg
+SF_INFMOD
+<sf-links _xcomp> != %
+<pos> = noun
+=
+<sf-links _infmod> = <sf-links _xcomp>
+<sf-links _xcomp> = %
+
+
+;///////////////////////////////////////////////////////////////////////
+;
+; Re-label objects, based on subject
+; "There is a place" - expl(is-2, There-1) nsubj(is-2, place-4)
+;
+#TemplateActionAlg
+SF_OBJ_TO_SUBJ
+<sf-links _expl> != %
+<sf-links _dobj> != %
+=
+<sf-links _nsubj> = <sf-links _dobj>
+<sf-links _dobj> = %
+
+;
+; Demote obj back to nsubjpass
+; "The man has been killed by the police." - nsubjpass(killed-5, man-2)
+;
+#TemplateActionAlg
+SF_OBJ_TO_NSUBJPASS
+<OBJ-LINK-TAG> = Pv
+<ref sf-links _dobj> != %
+=
+<ref sf-links _nsubjpass> = <ref sf-links _dobj>
+<ref sf-links _dobj> = %
+
+;
+; Demote obj back to partmod, and reverse the order of the dependency
+; Effects caused by the protein are important. - partmod(Effects-1, caused-2)
+;
+#TemplateActionAlg
+SF_OBJ_TO_PARTMOD
+<OBJ-LINK-TAG> = Mv
+<ref sf-links _dobj> != %
+=
+<ref sf-links _dobj sf-links _partmod> = <ref>
+<ref sf-links _dobj> = %
+
+;
+; Reverse the order of a predicative adjective,
+; and convert to nsubj.
+; Effects caused by the protein are important. 
+; _predadj(effects, important) -> _nsubj (important, effects)
+; although this seems strange/broken to me.
+;
+; conjoined phrases can have several of these, and so they have to 
+; be untangled via member links. E.G. 
+; "Mr. Bingley was good-looking and gentlemanlike."
+;
+#TemplateActionAlg
+SF_PREDADJ_TO_NSUBJ
+<links _predadj> != %
+<links _predadj member0> = %
+=
+<links _predadj sf-links _nsubj> = <>
+;
+#TemplateActionAlg
+SF_PREDADJ_TO_NSUBJ_M0
+<links _predadj> != %
+<links _predadj member0> != %
+=
+<links _predadj member0 sf-links _nsubj> = <>
+;
+#TemplateActionAlg
+SF_PREDADJ_TO_NSUBJ_M1
+<links _predadj> != %
+<links _predadj member1> != %
+=
+<links _predadj member1 sf-links _nsubj> = <>
+;
+#TemplateActionAlg
+SF_PREDADJ_TO_NSUBJ_M2
+<links _predadj> != %
+<links _predadj member2> != %
+=
+<links _predadj member2 sf-links _nsubj> = <>
+;
+#TemplateActionAlg
+SF_PREDADJ_TO_NSUBJ_M3
+<links _predadj> != %
+<links _predadj member3> != %
+=
+<links _predadj member3 sf-links _nsubj> = <>
+;
+; Indicate clausal subjects as such.
+; What she said makes sense. - csubj(makes-4, said-3)
+;
+; The below is rather complicated -- it looks for a mis-compare
+; between the local head-word and the head-word of an object.
+; If there's a miscompare, then we've got a clausal subject.
+; The rest of the logic tries to estalish the proper clausal subject
+; as the head-word of the clause, and then to erase the existing 
+; subject (which isn't the head word)
+; Is there a better way?
+;
+#TemplateActionAlg
+SF_NSUBJ_TO_CSUBJ
+<head-word> != %
+<ref sf-links _dobj nameSource head-word> != %
+<ref sf-links _dobj nameSource head-word> != <head-word>
+<ref sf-links _dobj nameSource head-word ref sf-links _nsubj> = <ref sf-links _dobj>
+=
+<ref sf-links _dobj nameSource head-word ref sf-links _csubj> = <head-word ref>
+; <ref sf-links _xxx> = <ref sf-links _dobj>
+; <ref sf-links _yyy> = <ref sf-links _dobj nameSource head-word ref>
+; <ref sf-links _zzz> = <ref sf-links _dobj nameSource head-word ref sf-links _nsubj>
+<ref sf-links _dobj nameSource head-word ref sf-links _nsubj> = %
+
+;///////////////////////////////////////////////////////////////////////
+;
+; Strange copular hacks
+; The Stanford parser uses copulas in the strangest ways ... 
+;
+; attributive:
+; An attributive is the complement of a copular verb such as 
+; “to be”, “to seem”, “to appear”.
+; XXX this needs a lot of work, probably.
+; What is that? ->  attr(is-2, What-1)
+#TemplateActionAlg
+SF_ATTR
+<LAB> = Ss*w
+=
+<F_R ref sf-links _attr> = <F_L ref>
+<F_R ref sf-links _nsubj> = %
+<F_R ref sf-links _nsubj> = <F_R ref sf-links _dobj>
+<F_R ref sf-links _dobj> = %
+
+; 
+; Bizarre trans-copular subject/attributive or something.
+; Bill is an honest man. - nsubj(man-5, Bill-1) cop(man-5, is-2)
+;
+; XXX this breaks down when there are two "be"'s in the sentence:
+; e.g. "That is just the kind of man he is"
+; which gets cross-talk of some kind -- the alg applier tries to
+; merge the two different "be"'s and fails ... I don't quite get it ... 
+;
+#TemplateActionAlg
+SF_NSUBJ_COP
+<name> = be
+<sf-links _nsubj> != %
+<sf-links _dobj> != %
+=
+<sf-links _dobj sf-links _cop> = <>
+<sf-links _dobj sf-links _nsubj> = <sf-links _nsubj>
+<sf-links _dobj> = %
+<sf-links _nsubj> = %
+
+;///////////////////////////////////////////////////////////////////////
+; Open subject
+
+;
+; Tom likes to eat fish. - xsubj(eat-4, Tom-1)
+; I am ready to leave -- xsubj should not be generated, causeof cop.
+; 
+#TemplateActionAlg
+SF_XSUBJ
+<LAB> = TO
+<F_L head-word ref sf-links _cop> = %
+=
+<F_R head-word ref sf-links _xsubj> = <F_L ref sf-links _nsubj>
+
+
+;///////////////////////////////////////////////////////////////////////
+; Idiom -- unspecified dependency
+
+; 
+#TemplateActionAlg
+SF_IDIOM
+<LAB> = \ID[A-Z]*[a-z]*
+=
+<F_L ref sf-links _dep> = <F_R ref>
+

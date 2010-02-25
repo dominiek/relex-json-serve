@@ -1,0 +1,276 @@
+;
+; relex-penn-tagging-algs.txt
+;
+; Provide Penn Treebank-style part-of-speech tags.
+;
+; This is performed only in a "compatibility mode", when the user 
+; requests it -- it is not a part of "core" RelEx.
+;
+; The Penn POS tags are described in:
+;
+;     Aoife Cahill's list:
+;     http://www.computing.dcu.ie/~acahill/tagset.html
+;
+;     Automatic Mapping Among Lexico-Grammatical Annotation Models (AMALGAM) 
+;     http://www.comp.leeds.ac.uk/amalgam/tagsets/upenn.html
+;
+;     Beatrice Santorini, Mitchell P. Marcus, MaryAnn Marcinkiewicz
+;     Building a Large Annotated Corpus of English: The Penn Treebank
+;     http://acl.ldc.upenn.edu/J/J93/J93-2004.pdf
+;
+; Both the basic relex tagging, and the semantic-algs step must be run
+; before this.  The semantic-algs file performs the verb tense tagging
+; that this file needs.
+;
+; Most of the below is in alphabetical order, although there are a few cases
+; where some of the tegging must be done before other tags.
+;
+; Status: as of October 2009, this is "experimental" but fairly stable: it 
+; appears to provide the correct tagging for a few dozen test sentences, but
+; has not been validated on any sort of large corpus.  No doubt, there are
+; some subtle tagging variations that have not yet been addressed.
+;
+#TemplateActionAlg
+PENN_DETERMINER
+<POS> = det
+=
+<penn-pos> = DT
+
+;
+#TemplateActionAlg
+PENN_ADJECTIVE
+<POS> = adj
+=
+<penn-pos> = JJ
+
+;
+#TemplateActionAlg
+PENN_ADJ_COMPARATIVE
+<POS> = adj
+<degree> = comparative
+=
+<penn-pos> = JJR
+
+;
+#TemplateActionAlg
+PENN_ADJ_SUPERLATIVE
+<POS> = adj
+<degree> = superlative
+=
+<penn-pos> = JJS
+
+;
+#TemplateActionAlg
+PENN_PREP
+<POS> = prep
+=
+<penn-pos> = IN
+
+;
+#TemplateActionAlg
+PENN_NOUN_SING_OR_MASS
+<POS> = noun
+<num> = singular|uncountable
+=
+<penn-pos> = NN
+
+;
+#TemplateActionAlg
+PENN_NOUN_SING_OR_MASS2
+<POS> = noun
+<num> = %
+=
+<penn-pos> = NN
+
+;
+#TemplateActionAlg
+PENN_NOUN_PROPER_SINGULAR_L
+<LAB> = G
+<F_L POS> = noun
+=
+<F_L penn-pos> = NNP
+
+;
+#TemplateActionAlg
+PENN_NOUN_PROPER_SINGULAR_R
+<LAB> = G
+<F_R POS> = noun
+=
+<F_R penn-pos> = NNP
+
+;
+#TemplateActionAlg
+PENN_NOUN_PLURAL
+<POS> = noun
+<num> = plural
+=
+<penn-pos> = NNS
+
+;
+; Identify verbs generically; the following rules
+; will over-ride as needed.
+;
+#TemplateActionAlg
+PENN_VERB_GENERIC
+<POS> = verb
+=
+<penn-pos> = VB
+;
+#TemplateActionAlg
+PENN_VERB_PAST_SIMPLE
+<POS> = verb
+<tense val> = past
+=
+<penn-pos> = VBD
+
+;
+#TemplateActionAlg
+PENN_VERB_PAST_PROGRESSIVE
+<POS> = verb
+<tense val> = progressive
+=
+<penn-pos> = VBG
+
+;
+; past participles:
+; I have eaten -- present tense, perfect aspect
+; I had eaten -- past tense, perfect aspect
+; 
+#TemplateActionAlg
+PENN_VERB_PAST_PARTICIPLE
+<POS> = verb
+<tense val> = passive|perfect
+=
+<penn-pos> = VBN
+
+;
+#TemplateActionAlg
+PENN_VERB_PRESENT
+<POS> = verb
+<tense val> = present
+=
+<penn-pos> = VBP
+
+;
+; VBZ is "third person singular" 
+; XXX and also probably need to send this to head-word as well. ?
+#TemplateActionAlg
+PENN_VERB_PRESENT_SING
+<LAB> = \Ss\.*
+<F_R POS> = verb
+<F_R tense val> = present
+=
+<F_R penn-pos> = VBZ
+
+#TemplateActionAlg
+PENN_VERB_PRESENT_SING_INV
+<LAB> = \SFIs\.*|\SIs\.*
+<F_L POS> = verb
+<F_L tense val> = present
+=
+<F_L penn-pos> = VBZ
+
+;
+#TemplateActionAlg
+PENN_ADVERB
+<POS> = adv
+=
+<penn-pos> = RB
+
+; /////////////////////////////////////////////////////////////////////
+;  Misc over-rides of above tags.
+;
+; CD must run after JJ so that it over-rides previous JJ settings.
+#TemplateActionAlg
+PENN_CARDINAL_NUMBER
+<IS-NUMBER-FLAG> = T
+=
+<penn-pos> = CD
+
+
+;
+; Existential there
+; Are there any *other* EX's to generate ??
+#TemplateActionAlg
+PENN_EXISTENTIAL_THERE
+<LAB> = \SF\.*
+<F_L str> = there
+=
+<F_L penn-pos> = EX
+
+#TemplateActionAlg
+PENN_EXISTENTIAL_THERE_INV
+<LAB> = \SFI\.*
+<F_R str> = there
+=
+<F_R penn-pos> = EX
+
+; Modal auxilliary. We look to see if the word is actually used as an
+; auxilliary -- if it is, then we tag it.  Furthermore, word needs to
+; to be present/future tense (e.g. "had eaten", "had" is not tagged MD 
+; but VBD)
+;
+; This seems to be a closed list: tag any occurance of:
+;
+; can cannot could couldn't dare may might must need ought 
+; shall should shouldn't will would 
+;
+#TemplateActionAlg
+PENN_MODAL_AUX
+<_aux> != %
+<_aux nameSource POS> = verb
+<_aux nameSource orig_str> = can|cannot|could|couldn't|dare|may|might|must|need|ought|shall|should|shouldn't|will|would
+=
+<_aux nameSource penn-pos> = MD
+
+; PRP tagging after NN tagging to over-ride NN tags.
+; Look for non-trivial gender setting, which is what relex uses for 
+; "personal" pronouns.
+#TemplateActionAlg
+PENN_PERSONAL_PRONOUN
+<POS> = noun
+<gend> != %
+<ref PRONOUN-FLAG> = T
+=
+<penn-pos> = PRP
+
+;
+#TemplateActionAlg
+PENN_POSSESIVE_PERSONAL_PRONOUN
+<POSSESSIVE-FLAG> = T
+=
+<penn-pos> = PRP$
+
+; 
+#TemplateActionAlg
+PENN_TO_PARTICLE
+<LAB> = \TO\.*
+=
+<F_R penn-pos> = TO
+
+;
+; A closed list for now, I'm not sure what is wanted here ... 
+#TemplateActionAlg
+PENN_WH_ADVERB
+; <POS> = conjunction
+<str> = how|when|where|why
+=
+<penn-pos> = WRB
+
+; possesive determiner, for example:
+; "I saw the man whose wife you love." poss(wife-6-NN, whose-5-WP$)
+#TemplateActionAlg
+PENN_WH_POSSESIVE_PRONOUN
+<LAB> = \D\.\.w
+<F_L orig_str> = whose
+=
+<F_L penn-pos> = WP$
+
+; /////////////////////////////////////////////////////////////////////
+; Copy to ref
+;
+#TemplateActionAlg
+PENN_POS_TO_REF
+<penn-pos> != %
+=
+<ref penn-POS> = <penn-pos>

@@ -1,0 +1,121 @@
+
+h1. Relex JSON Serve
+
+Small HTTP server that allows you to access "Relex - the Natural Language Processing capabilities of the OpenCog project":http://www.opencog.org/wiki/NLP_pipeline. This project loads Relex and all it's Java dependencies into a small "Ruby/Sinatra server":http://www.sinatrarb.com/ and exposes it's functionality through "JSON":http://json.org/ calls.
+
+The Relex tools are very powerful and they have many Java and C++ dependencies. In order to communicate with it in a performant way, we need to make sure that the Relex process + JVM keeps on running. Relex comes with it's own TCP-based RPC server which is mainly focussed on OpenCog integration. This project attempts to make the functionality available through HTTP JSON RPC calls.
+
+h2. Intended Audience
+
+* Developers that need access to some of the most powerful NLP tools
+* Developers that quickly need JSON output of a parse
+* Developers that use web-flavoured frameworks: jQuery, NodeJS, Rails, Sinatra, etc...
+
+h2. Dependencies
+
+To learn more about Relex & it's dependencies, please visit the "OpenCog website":http://www.opencog.org/wiki/NLP_pipeline.
+
+* Java VM
+* Linkgrammar and it's Java bindings
+* Wordnet
+* Most (cross-platform) JAR files are in dependencies/*, including Relex.
+* Ruby and these gems:
+
+<code>
+  sudo gem install json
+  sudo gem install sinatra
+  sudo gem install rjb
+</code>
+
+h2. Starting the server
+
+<code>
+  $ ruby relex.rb 
+  Java VM, loading: commons-logging.jar
+  Java VM, loading: jwnl.jar
+  Java VM, loading: linkgrammar-4.6.5.jar
+  Java VM, loading: relex-1.2.1.jar
+  == Sinatra/0.9.4 has taken the stage on 9090 for development with backup from Mongrel
+</code>
+
+h2. Example: Frame Semantics for a Sentence
+
+<code>
+  $ wget http://localhost:9090/frames?text=I am eating a pear
+  {
+      "Transitive_action": [{
+          "Patient": ["eat", "pear"]
+      },
+      {
+          "Agent": ["eat", "I"]
+      }],
+      "Process_continue": [{
+          "Time": ["present", "present"]
+      },
+      {
+          "Event": ["eat", "eat"]
+      }],
+      "Ingestion": [{
+          "Ingestibles": ["eat", "pear"]
+      },
+      {
+          "Ingestor": ["eat", "I"]
+      }]
+  }
+</code>
+
+h2. Example: Penn Tree Structure for a Sentence
+
+<code>
+  $ wget http://localhost:9090/phrase_tree?text=I am eating a pear
+  {
+      "string": "(S (NP I) (VP am (VP eating (NP a pear))) .)",
+      "tree_array": [[{
+          "phrase": "I",
+          "pos": "NP"
+      }], [[[{
+          "phrase": "a pear",
+          "pos": "NP"
+      }], {
+          "phrase": "eating ",
+          "pos": "VP"
+      }], {
+          "phrase": "am ",
+          "pos": "VP"
+      }], {
+          "phrase": "",
+          "pos": "S"
+      }],
+      "flat_array": [{
+          "phrase": "I",
+          "pos": "NP"
+      },
+      {
+          "phrase": "a pear",
+          "pos": "NP"
+      },
+      {
+          "phrase": "eating ",
+          "pos": "VP"
+      },
+      {
+          "phrase": "am ",
+          "pos": "VP"
+      },
+      {
+          "phrase": "",
+          "pos": "S"
+      }]
+  } 
+</code>
+
+h2. TODO
+
+* Expose more functionality
+* Integration tests
+* Caching mechanisms
+* Stress testing
+
+h2. License
+
+MIT, but who cares?
